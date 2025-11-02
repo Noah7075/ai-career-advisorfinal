@@ -1,0 +1,1834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Personalized AI Career Advisor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Add the jsPDF library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .step-active {
+            border-color: #3b82f6;
+            color: #3b82f6;
+        }
+        .skill-tag {
+            display: inline-flex;
+            align-items: center;
+            background-color: #e0e7ff;
+            color: #4338ca;
+            padding: 4px 8px;
+            border-radius: 16px;
+            font-size: 14px;
+            margin: 4px;
+        }
+        .skill-tag button {
+            margin-left: 8px;
+            color: #4338ca;
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        /* Custom scrollbar for better aesthetics */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        .dynamic-entry {
+            border-left: 3px solid #d1d5db;
+        }
+        .ai-summary-card {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }
+
+        /* AI Mentor Chat Styles */
+        #chat-widget {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 350px;
+            max-width: 90vw;
+            height: 500px;
+            max-height: 80vh;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            transform: translateY(110%);
+            transition: transform 0.3s ease-in-out;
+            z-index: 1000;
+        }
+        #chat-widget.open {
+            transform: translateY(0);
+        }
+        .chat-message {
+            padding: 8px 12px;
+            border-radius: 18px;
+            margin-bottom: 8px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+        .user-message {
+            background-color: #3b82f6;
+            color: white;
+            align-self: flex-end;
+        }
+        .ai-message {
+            background-color: #e5e7eb;
+            color: #1f2937;
+            align-self: flex-start;
+        }
+        .typing-indicator span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #9ca3af;
+            animation: pulse 1s infinite;
+        }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.3; }
+            50% { opacity: 1; }
+        }
+        /* Interview Recording Button */
+        #record-btn {
+            transition: all 0.2s ease-in-out;
+        }
+        #record-btn.recording {
+            background-color: #dc2626; /* Red when recording */
+            color: white;
+            box-shadow: 0 0 10px rgba(220, 38, 38, 0.7);
+        }
+        #record-btn.processing {
+            background-color: #f59e0b; /* Amber when processing */
+            color: white;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <!-- Audio element for TTS playback -->
+    <audio id="tts-audio" style="display: none;"></audio>
+
+    <div class="container mx-auto p-4 md:p-8 max-w-5xl">
+
+        <!-- Header -->
+        <header class="text-center mb-8 md:mb-12">
+            <h1 class="text-3xl md:text-4xl font-bold text-slate-900">Personalized AI Career Advisor</h1>
+            <p class="text-slate-600 mt-2">Map your skills, discover your path, and prepare for the future.</p>
+        </header>
+
+        <!-- Main Advisor Card -->
+        <main class="bg-white p-6 md:p-8 rounded-2xl shadow-lg border border-slate-200">
+            <!-- Step Indicators -->
+            <div class="flex items-center justify-center space-x-2 md:space-x-4 mb-8">
+                <div id="step-1-indicator" class="step-active flex items-center space-x-2">
+                    <div class="w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold">1</div>
+                    <span class="hidden md:inline">Profile</span>
+                </div>
+                <div class="flex-1 h-px bg-slate-200"></div>
+                <div id="step-2-indicator" class="flex items-center space-x-2 text-slate-400">
+                    <div class="w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold">2</div>
+                    <span class="hidden md:inline">Resume</span>
+                </div>
+                <div class="flex-1 h-px bg-slate-200"></div>
+                <div id="step-3-indicator" class="flex items-center space-x-2 text-slate-400">
+                    <div class="w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold">3</div>
+                    <span class="hidden md:inline">Goals</span>
+                </div>
+                 <div class="flex-1 h-px bg-slate-200"></div>
+                <div id="step-4-indicator" class="flex items-center space-x-2 text-slate-400">
+                    <div class="w-8 h-8 rounded-full border-2 flex items-center justify-center font-bold">4</div>
+                    <span class="hidden md:inline">Advice</span>
+                </div>
+            </div>
+
+            <!-- Step 1: Profile & Skills -->
+            <div id="step-1">
+                <h2 class="text-xl font-semibold mb-4 text-slate-800">Tell us about yourself</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                        <label for="name" class="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
+                        <input type="text" id="name" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" placeholder="e.g., Alex Doe">
+                    </div>
+                    <div>
+                        <label for="education" class="block text-sm font-medium text-slate-700 mb-1">Highest Education</label>
+                        <select id="education" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition">
+                            <option>High School</option>
+                            <option>Bachelor's Degree</option>
+                            <option>Master's Degree</option>
+                            <option>PhD</option>
+                            <option>Other</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="field-of-study" class="block text-sm font-medium text-slate-700 mb-1">Field of Study</label>
+                        <input type="text" id="field-of-study" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" placeholder="e.g., Computer Science">
+                    </div>
+                </div>
+                <div class="mt-6">
+                    <label for="skills-input" class="block text-sm font-medium text-slate-700 mb-1">Your Skills</label>
+                    <p class="text-sm text-slate-500 mb-2">Enter skills separated by commas or press Enter after each. (e.g., Python, Teamwork, SQL)</p>
+                    <div class="border border-slate-300 rounded-lg p-2 flex flex-wrap items-center">
+                        <div id="skills-container" class="flex flex-wrap"></div>
+                        <input type="text" id="skills-input" class="flex-1 px-2 py-1 outline-none min-w-[150px]" placeholder="Add a skill...">
+                    </div>
+                </div>
+                
+                 <!-- AI Professional Summary -->
+                 <div class="mt-6">
+                    <button id="generate-summary-btn" class="w-full text-md bg-indigo-600 text-white font-semibold px-4 py-2.5 rounded-lg hover:bg-indigo-700 transition flex items-center justify-center shadow-sm">
+                        <span id="summary-btn-text"><i class="fas fa-wand-magic-sparkles mr-2"></i>Generate AI Professional Summary</span>
+                        <span id="summary-spinner" class="hidden"><i class="fas fa-spinner fa-spin"></i>&nbsp;Generating...</span>
+                    </button>
+                    <div id="ai-summary-container" class="hidden mt-4 p-4 rounded-lg ai-summary-card border border-slate-200">
+                        <h4 class="font-bold text-slate-800 mb-2">Your AI-Generated Summary:</h4>
+                        <p id="ai-summary-text" class="text-slate-700 text-sm"></p>
+                    </div>
+                </div>
+
+                 <div class="mt-4">
+                    <label class="flex items-center cursor-pointer">
+                        <input type="checkbox" id="build-resume-checkbox" class="h-4 w-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500">
+                        <span class="ml-2 text-sm text-slate-700">I want to build an ATS-friendly resume.</span>
+                    </label>
+                </div>
+                <div id="step-1-error" class="text-red-500 text-sm mt-2 text-right h-5"></div>
+                <div class="mt-2 text-right">
+                    <button id="next-from-step-1-btn" class="bg-blue-600 text-white font-semibold px-6 py-2 rounded-lg hover:bg-blue-700 transition shadow-sm">Next <i class="fas fa-arrow-right ml-2"></i></button>
+                </div>
+            </div>
+            
+            <!-- Step 2: Resume Builder -->
+            <div id="step-2" class="hidden">
+                 <h2 class="text-xl font-semibold mb-4 text-slate-800">Build Your Resume</h2>
+                 <!-- Contact Info -->
+                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                      <div>
+                        <label for="email" class="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                        <input type="email" id="email" placeholder="alex.doe@email.com" class="w-full px-4 py-2 border border-slate-300 rounded-lg">
+                      </div>
+                      <div>
+                        <label for="phone" class="block text-sm font-medium text-slate-700 mb-1">Phone</label>
+                        <input type="tel" id="phone" placeholder="(123) 456-7890" class="w-full px-4 py-2 border border-slate-300 rounded-lg">
+                      </div>
+                      <div>
+                        <label for="linkedin" class="block text-sm font-medium text-slate-700 mb-1">LinkedIn URL</label>
+                        <input type="url" id="linkedin" placeholder="linkedin.com/in/alexdoe" class="w-full px-4 py-2 border border-slate-300 rounded-lg">
+                      </div>
+                 </div>
+
+                 <!-- Work Experience -->
+                 <div class="mb-6">
+                    <h3 class="text-lg font-semibold text-slate-800 mb-2">Work Experience</h3>
+                    <div id="experience-entries" class="space-y-4"></div>
+                    <button id="add-experience-btn" class="mt-2 text-sm bg-slate-200 text-slate-800 font-semibold px-4 py-2 rounded-lg hover:bg-slate-300 transition"><i class="fas fa-plus mr-2"></i>Add Experience</button>
+                 </div>
+                 
+                 <!-- Projects -->
+                 <div>
+                    <h3 class="text-lg font-semibold text-slate-800 mb-2">Projects</h3>
+                    <div id="project-entries" class="space-y-4"></div>
+                    <button id="add-project-btn" class="mt-2 text-sm bg-slate-200 text-slate-800 font-semibold px-4 py-2 rounded-lg hover:bg-slate-300 transition"><i class="fas fa-plus mr-2"></i>Add Project</button>
+                 </div>
+
+                 <div class="mt-6 flex justify-between">
+                     <button id="prev-to-step-1-btn" class="bg-slate-200 text-slate-800 font-semibold px-6 py-2 rounded-lg hover:bg-slate-300 transition"><i class="fas fa-arrow-left mr-2"></i> Back</button>
+                     <button id="next-to-step-3-btn" class="bg-blue-600 text-white font-semibold px-6 py-2 rounded-lg hover:bg-blue-700 transition shadow-sm">Next <i class="fas fa-arrow-right ml-2"></i></button>
+                 </div>
+            </div>
+
+            <!-- Step 3: Goals & Interests -->
+            <div id="step-3" class="hidden">
+                 <h2 class="text-xl font-semibold mb-4 text-slate-800">What are your interests?</h2>
+                 <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label for="interests" class="block text-sm font-medium text-slate-700">Describe your interests and career aspirations</label>
+                        <button id="improve-interest-btn" class="text-sm bg-indigo-100 text-indigo-700 font-semibold px-3 py-1 rounded-md hover:bg-indigo-200 transition flex items-center">
+                             <span id="improve-btn-text"><i class="fas fa-wand-magic-sparkles mr-2"></i>Improve with AI</span>
+                             <span id="improving-spinner" class="hidden"><i class="fas fa-spinner fa-spin"></i>&nbsp;Improving...</span>
+                        </button>
+                    </div>
+                    <textarea id="interests" rows="4" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition" placeholder="e.g., I love building web applications, am passionate about AI, or I enjoy leading teams and managing projects..."></textarea>
+                 </div>
+                 <div id="step-3-error" class="text-red-500 text-sm mt-2 text-right h-5"></div>
+                 <div class="mt-2 flex justify-between">
+                     <button id="prev-from-step-3-btn" class="bg-slate-200 text-slate-800 font-semibold px-6 py-2 rounded-lg hover:bg-slate-300 transition"><i class="fas fa-arrow-left mr-2"></i> Back</button>
+                     <button id="get-advice-btn" class="bg-green-600 text-white font-semibold px-6 py-2 rounded-lg hover:bg-green-700 transition shadow-sm">
+                        <span id="btn-text">Get AI Advice</span>
+                        <span id="loading-spinner" class="hidden"><i class="fas fa-spinner fa-spin mr-2"></i>Analyzing...</span>
+                     </button>
+                 </div>
+            </div>
+
+        </main>
+        
+        <!-- Step 4: Results Section -->
+        <div id="results-section" class="hidden mt-8">
+            <div id="results-content" class="bg-white p-6 md:p-8 rounded-2xl shadow-lg border border-slate-200 fade-in">
+                <!-- Dynamic content will be injected here -->
+            </div>
+             <div id="job-opportunities-container" class="hidden mt-6 bg-white p-6 md:p-8 rounded-2xl shadow-lg border border-slate-200 fade-in">
+                <!-- Live jobs will be injected here -->
+            </div>
+             <div id="interview-prep-container" class="hidden mt-6 bg-white p-6 md:p-8 rounded-2xl shadow-lg border border-slate-200 fade-in">
+                <!-- Interview prep content will be injected here -->
+            </div>
+             <!-- NEW: AI Networking Assistant Container -->
+            <div id="networking-assistant-container" class="hidden mt-6 bg-white p-6 md:p-8 rounded-2xl shadow-lg border border-slate-200 fade-in">
+                 <h3 class="text-2xl font-bold text-slate-900 mb-4">Build Your Network</h3>
+                 <p class="text-slate-600 mb-4">Networking is key. Let the AI help you identify who to connect with and what to say.</p>
+                 <button id="generate-networking-btn" class="bg-cyan-600 text-white font-semibold px-6 py-2 rounded-lg hover:bg-cyan-700 transition shadow-sm">
+                    <span class="btn-text"><i class="fas fa-users mr-2"></i>Generate Networking Plan</span>
+                    <span class="spinner hidden"><i class="fas fa-spinner fa-spin"></i> Generating...</span>
+                 </button>
+                 <div id="networking-plan-content" class="hidden mt-4"></div>
+            </div>
+             <div class="mt-6 text-center space-x-2 md:space-x-4 flex flex-wrap justify-center gap-y-3">
+                <button id="mentor-chat-btn" class="bg-purple-600 text-white font-semibold px-6 py-2 rounded-lg hover:bg-purple-700 transition shadow-sm"><i class="fas fa-comments mr-2"></i>Chat with Mentor</button>
+                <button id="interview-prep-btn" class="bg-indigo-600 text-white font-semibold px-6 py-2 rounded-lg hover:bg-indigo-700 transition shadow-sm"><i class="fas fa-user-tie mr-2"></i>Live Virtual Interview</button>
+                <button id="download-resume-btn" class="bg-green-600 text-white font-semibold px-6 py-2 rounded-lg hover:bg-green-700 transition shadow-sm hidden"><i class="fas fa-download mr-2"></i>Download Resume (PDF)</button>
+                <button id="start-over-btn" class="bg-slate-600 text-white font-semibold px-6 py-2 rounded-lg hover:bg-slate-700 transition shadow-sm"><i class="fas fa-redo-alt mr-2"></i> Start Over</button>
+            </div>
+        </div>
+        
+    </div>
+
+    <!-- AI Mentor Chat Widget -->
+    <div id="chat-widget" class="bg-white border border-slate-300">
+        <!-- Chat Header -->
+        <div class="p-4 bg-purple-600 text-white flex justify-between items-center">
+            <h3 class="font-bold"><i class="fas fa-brain mr-2"></i>AI Career Mentor</h3>
+            <button id="close-chat-btn" class="text-white hover:text-purple-200"><i class="fas fa-times"></i></button>
+        </div>
+        <!-- Chat Messages -->
+        <div id="chat-messages" class="flex-1 p-4 overflow-y-auto flex flex-col space-y-2 bg-slate-50">
+            <!-- Messages will be injected here -->
+            <div id="chat-typing-indicator" class="ai-message hidden">
+                <div class="typing-indicator"><span></span><span></span><span></span></div>
+            </div>
+        </div>
+        <!-- Chat Input -->
+        <div class="p-2 border-t border-slate-200 bg-white">
+            <div class="flex items-center">
+                <input type="text" id="chat-input" class="w-full px-3 py-2 border rounded-l-md focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="Ask a follow-up question...">
+                <button id="chat-send-btn" class="bg-purple-600 text-white px-4 py-2 rounded-r-md hover:bg-purple-700"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </div>
+    </div>
+    
+<script>
+    (function() {
+        "use strict";
+
+        // --- API Key & Secure Endpoint Configuration ---
+        // This is the new secure URL from your successful Cloud Function deployment.
+        const PROXY_URL = "https://us-central1-autonomous-yeti-475214-h8.cloudfunctions.net/ai-proxy-api";
+
+        // The API key is now EMPTY on the frontend. It's securely stored in the Cloud Function.
+        const GEMINI_API_KEY = "";
+
+
+        // --- Element Selectors ---
+        const steps = [document.getElementById('step-1'), document.getElementById('step-2'), document.getElementById('step-3'), document.getElementById('results-section')];
+        const stepIndicators = [document.getElementById('step-1-indicator'), document.getElementById('step-2-indicator'), document.getElementById('step-3-indicator'), document.getElementById('step-4-indicator')];
+        
+        // Step 1
+        const nextFromStep1Btn = document.getElementById('next-from-step-1-btn');
+        const skillsInput = document.getElementById('skills-input');
+        const skillsContainer = document.getElementById('skills-container');
+        const buildResumeCheckbox = document.getElementById('build-resume-checkbox');
+        const generateSummaryBtn = document.getElementById('generate-summary-btn');
+        const summaryBtnText = document.getElementById('summary-btn-text');
+        const summarySpinner = document.getElementById('summary-spinner');
+        const aiSummaryContainer = document.getElementById('ai-summary-container');
+        const aiSummaryText = document.getElementById('ai-summary-text');
+
+        // Step 2
+        const prevToStep1Btn = document.getElementById('prev-to-step-1-btn');
+        const nextToStep3Btn = document.getElementById('next-to-step-3-btn');
+        const addExperienceBtn = document.getElementById('add-experience-btn');
+        const addProjectBtn = document.getElementById('add-project-btn');
+        const experienceEntries = document.getElementById('experience-entries');
+        const projectEntries = document.getElementById('project-entries');
+
+        // Step 3
+        const prevFromStep3Btn = document.getElementById('prev-from-step-3-btn');
+        const getAdviceBtn = document.getElementById('get-advice-btn');
+        const interestsTextarea = document.getElementById('interests');
+        const improveInterestBtn = document.getElementById('improve-interest-btn');
+        const improveBtnText = document.getElementById('improve-btn-text');
+        const improvingSpinner = document.getElementById('improving-spinner');
+        const btnText = document.getElementById('btn-text');
+        const loadingSpinner = document.getElementById('loading-spinner');
+
+        // Step 4
+        const resultsContent = document.getElementById('results-content');
+        const startOverBtn = document.getElementById('start-over-btn');
+        const downloadResumeBtn = document.getElementById('download-resume-btn');
+        const interviewPrepBtn = document.getElementById('interview-prep-btn');
+        const mentorChatBtn = document.getElementById('mentor-chat-btn');
+        const generateNetworkingBtn = document.getElementById('generate-networking-btn'); // New button
+
+        // AI Mentor Chat Elements
+        const chatWidget = document.getElementById('chat-widget');
+        const closeChatBtn = document.getElementById('close-chat-btn');
+        const chatMessages = document.getElementById('chat-messages');
+        const chatInput = document.getElementById('chat-input');
+        const chatSendBtn = document.getElementById('chat-send-btn');
+        const chatTypingIndicator = document.getElementById('chat-typing-indicator');
+
+        // Live Jobs Elements
+        const jobOpportunitiesContainer = document.getElementById('job-opportunities-container');
+        
+        // Networking Assistant Elements
+        const networkingAssistantContainer = document.getElementById('networking-assistant-container'); // New container
+        const networkingPlanContent = document.getElementById('networking-plan-content');
+
+        // Audio & Speech Elements
+        const ttsAudio = document.getElementById('tts-audio');
+        let recognition = null;
+        let isRecording = false;
+        let answerTranscript = '';
+        
+        // --- State Variables ---
+        let userSkills = [];
+        let experienceCount = 0;
+        let projectCount = 0;
+        let careerRecommendations = []; // Store AI recommendations
+        let chatHistory = [];
+        let interviewState = {
+            questions: [],
+            currentQuestionIndex: 0,
+            isInterviewActive: false
+        };
+
+        const learningResources = {
+            "html": { title: "HTML Full Course", url: "https://www.freecodecamp.org/news/html-full-course/" },
+            "css": { title: "CSS Tutorial", url: "https://www.w3schools.com/css/" },
+            "javascript": { title: "JavaScript Tutorial", url: "https://www.javascript.info/" },
+            "python": { title: "Python for Everybody", url: "https://www.py4e.com/book" },
+            "java": { title: "Java Programming", url: "https://java-programming.mooc.fi/" },
+            "c++": { title: "C++ Tutorial", url: "https://www.learncpp.com/" },
+            "react": { title: "Official React Tutorial", url: "https://react.dev/learn" },
+            "angular": { title: "Angular Tour of Heroes", url: "https://angular.io/tutorial" },
+            "vue.js": { title: "Vue.js Guide", url: "https://vuejs.org/guide/introduction.html" },
+            "node.js": { title: "Node.js Documentation", url: "https://nodejs.org/en/docs" },
+            "django": { title: "Django Tutorial", url: "https://docs.djangoproject.com/en/5.0/intro/tutorial01/" },
+            "flask": { title: "Flask Documentation", url: "https://flask.palletsprojects.com/en/3.0.x/" },
+            "sql": { title: "SQLBolt", url: "https://sqlbolt.com/" },
+            "mongodb": { title: "MongoDB University", url: "https://learn.mongodb.com/" },
+            "aws": { title: "AWS Free Tier", url: "https://aws.amazon.com/free/" },
+            "azure": { title: "Azure Fundamentals", url: "https://learn.microsoft.com/en-us/training/paths/microsoft-azure-fundamentals-describe-cloud-concepts/" },
+            "gcp": { title: "Google Cloud Skills Boost", url: "https://www.cloudskillsboost.google/" },
+            "docker": { title: "Docker Get Started", url: "https://docs.docker.com/get-started/" },
+            "kubernetes": { title: "Kubernetes Basics", url: "https://kubernetes.io/docs/tutorials/kubernetes-basics/" },
+            "git": { title: "Git Handbook", url: "https://guides.github.com/introduction/git-handbook/" },
+            "figma": { title: "Figma for Beginners", url: "https://www.youtube.com/watch?v=Cx2dkpBxst8" },
+            "adobe xd": { title: "Adobe XD Tutorial", url: "https://www.adobe.com/products/xd/learn.html" },
+            "sketch": { title: "Sketch Tutorials", url: "https://www.sketch.com/learn/" },
+            "prototyping": { title: "Prototyping and Design", url: "https://www.interaction-design.org/courses/ui-design-patterns-for-successful-software" }
+        };
+        
+        // --- Event Listeners ---
+        
+        nextFromStep1Btn.addEventListener('click', () => {
+            const name = document.getElementById('name').value;
+            if (name.trim() === '' || userSkills.length === 0) {
+                showError("Please enter your name and at least one skill.", 1);
+                return;
+            }
+            showError("", 1);
+            if (buildResumeCheckbox.checked) {
+                changeStep(2);
+            } else {
+                changeStep(3);
+            }
+        });
+        
+        prevToStep1Btn.addEventListener('click', () => changeStep(1));
+        nextToStep3Btn.addEventListener('click', () => changeStep(3));
+        prevFromStep3Btn.addEventListener('click', () => {
+             if (buildResumeCheckbox.checked) {
+                changeStep(2);
+            } else {
+                changeStep(1);
+            }
+        });
+        getAdviceBtn.addEventListener('click', getAIRecommendations);
+        startOverBtn.addEventListener('click', () => window.location.reload());
+        downloadResumeBtn.addEventListener('click', downloadResume);
+        improveInterestBtn.addEventListener('click', handleInterestImproveClick);
+        generateSummaryBtn.addEventListener('click', handleGenerateSummary);
+        interviewPrepBtn.addEventListener('click', showInterviewPrep);
+        
+        skillsInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ',') {
+                e.preventDefault();
+                const skill = skillsInput.value.trim().toLowerCase();
+                if (skill && !userSkills.includes(skill)) {
+                    userSkills.push(skill);
+                    renderSkills();
+                }
+                skillsInput.value = '';
+            }
+        });
+
+        addExperienceBtn.addEventListener('click', addExperienceEntry);
+        addProjectBtn.addEventListener('click', addProjectEntry);
+        
+        // Event delegation for dynamic "Improve with AI" buttons
+        experienceEntries.addEventListener('click', handleDynamicImproveClick);
+        projectEntries.addEventListener('click', handleDynamicImproveClick);
+        
+        // Chat event listeners
+        mentorChatBtn.addEventListener('click', () => {
+            chatWidget.classList.add('open');
+            // Add a welcome message if it's the first time opening the chat
+            if (chatHistory.length === 0) {
+                const welcomeMsg = `Hi ${document.getElementById('name').value}! I'm your AI Mentor. Feel free to ask me anything about your recommended career paths or skills.`;
+                addMessageToChat('ai', welcomeMsg);
+                // Add to history *after* showing it, so it's not part of the first API call
+                chatHistory.push({ role: 'model', parts: [{ text: welcomeMsg }] });
+            }
+        });
+        closeChatBtn.addEventListener('click', () => chatWidget.classList.remove('open'));
+        chatSendBtn.addEventListener('click', handleChatMessage);
+        chatInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                handleChatMessage();
+            }
+        });
+
+        // Job Opportunities event listener
+        jobOpportunitiesContainer.addEventListener('click', handleJobOpportunitiesClick);
+        
+        // Learning Plan event listener
+        resultsContent.addEventListener('click', handleLearningPlanClick);
+        
+        // Networking Assistant event listener
+        generateNetworkingBtn.addEventListener('click', handleGenerateNetworkingPlan); // New listener
+        networkingPlanContent.addEventListener('click', handleNetworkingCopyClick); // New listener for copy buttons
+        
+        // --- Functions ---
+
+        function showError(message, step) {
+            const errorDiv = document.getElementById(`step-${step}-error`);
+            if (errorDiv) {
+                errorDiv.textContent = message;
+            }
+        }
+
+        function changeStep(stepNum) {
+            steps.forEach((step, index) => {
+                step.classList.toggle('hidden', index + 1 !== stepNum);
+            });
+            stepIndicators.forEach((indicator, index) => {
+                indicator.classList.toggle('step-active', index + 1 === stepNum);
+                indicator.classList.toggle('text-slate-400', index + 1 !== stepNum);
+            });
+            window.scrollTo(0, 0);
+        }
+
+        function renderSkills() {
+            skillsContainer.innerHTML = '';
+            userSkills.forEach(skill => {
+                const skillTag = document.createElement('div');
+                skillTag.className = 'skill-tag';
+                skillTag.innerHTML = `<span>${skill}</span><button onclick="removeSkill('${skill}')"><i class="fas fa-times"></i></button>`;
+                skillsContainer.appendChild(skillTag);
+            });
+        }
+        
+        // Make removeSkill globally accessible
+        window.removeSkill = function(skillToRemove) {
+            userSkills = userSkills.filter(skill => skill !== skillToRemove);
+            renderSkills();
+        }
+
+        function addExperienceEntry() {
+            experienceCount++;
+            const entry = document.createElement('div');
+            entry.className = 'dynamic-entry p-4 space-y-3 bg-slate-50 rounded-r-lg';
+            entry.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <input type="text" placeholder="Job Title" class="w-full px-3 py-2 border rounded-md" id="exp-title-${experienceCount}">
+                    <input type="text" placeholder="Company" class="w-full px-3 py-2 border rounded-md" id="exp-company-${experienceCount}">
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <input type="text" placeholder="Start Date (e.g., Jan 2022)" class="w-full px-3 py-2 border rounded-md" id="exp-start-${experienceCount}">
+                    <input type="text" placeholder="End Date (e.g., Present)" class="w-full px-3 py-2 border rounded-md" id="exp-end-${experienceCount}">
+                </div>
+                <div class="relative">
+                    <textarea placeholder="Key responsibilities and achievements..." rows="3" class="w-full px-3 py-2 border rounded-md" id="exp-desc-${experienceCount}"></textarea>
+                    <button class="improve-ai-btn absolute bottom-2 right-2 text-xs bg-indigo-100 text-indigo-700 font-semibold px-2 py-1 rounded-md hover:bg-indigo-200 transition flex items-center" data-target-id="exp-desc-${experienceCount}" data-context="experience">
+                        <span class="btn-text"><i class="fas fa-wand-magic-sparkles mr-1"></i>Improve</span>
+                        <span class="spinner hidden"><i class="fas fa-spinner fa-spin"></i></span>
+                    </button>
+                </div>
+            `;
+            experienceEntries.appendChild(entry);
+        }
+
+        function addProjectEntry() {
+            projectCount++;
+            const entry = document.createElement('div');
+            entry.className = 'dynamic-entry p-4 space-y-3 bg-slate-50 rounded-r-lg';
+            entry.innerHTML = `
+                <input type="text" placeholder="Project Name" class="w-full px-3 py-2 border rounded-md" id="proj-name-${projectCount}">
+                <div class="relative">
+                    <textarea placeholder="Project description and your role..." rows="3" class="w-full px-3 py-2 border rounded-md" id="proj-desc-${projectCount}"></textarea>
+                    <button class="improve-ai-btn absolute bottom-2 right-2 text-xs bg-indigo-100 text-indigo-700 font-semibold px-2 py-1 rounded-md hover:bg-indigo-200 transition flex items-center" data-target-id="proj-desc-${projectCount}" data-context="project">
+                        <span class="btn-text"><i class="fas fa-wand-magic-sparkles mr-1"></i>Improve</span>
+                        <span class="spinner hidden"><i class="fas fa-spinner fa-spin"></i></span>
+                    </button>
+                </div>
+                <input type="text" placeholder="Technologies Used (e.g., React, Node.js)" class="w-full px-3 py-2 border rounded-md" id="proj-tech-${projectCount}">
+            `;
+            projectEntries.appendChild(entry);
+        }
+
+        async function handleGenerateSummary() {
+            const name = document.getElementById('name').value;
+            if (name.trim() === '' || userSkills.length === 0) {
+                showError("Please enter your name and at least one skill first.", 1);
+                return;
+            }
+            showError("", 1);
+            
+            summaryBtnText.classList.add('hidden');
+            summarySpinner.classList.remove('hidden');
+            generateSummaryBtn.disabled = true;
+
+            try {
+                // FIX: Build the prompt here before sending
+                const name = document.getElementById('name').value;
+                const education = document.getElementById('education').value;
+                const fieldOfStudy = document.getElementById('field-of-study').value;
+                let educationText = education;
+                if (fieldOfStudy.trim() !== '') educationText += ` in ${fieldOfStudy}`;
+                const prompt = `Generate a 2-sentence professional summary in the first person (e.g., "I am a...") for someone with a ${educationText} and skills in ${userSkills.join(', ')}. The summary should be inspiring and suitable for a LinkedIn profile. Do not add any preamble.`;
+                
+                const summary = await callGeminiAPI(prompt, 'summary');
+                aiSummaryText.textContent = summary;
+                aiSummaryContainer.classList.remove('hidden');
+            } catch (error) {
+                console.error("Error generating summary:", error);
+                showError('Could not generate summary. Please try again.', 1);
+            } finally {
+                summaryBtnText.classList.remove('hidden');
+                summarySpinner.classList.add('hidden');
+                generateSummaryBtn.disabled = false;
+            }
+        }
+
+        async function handleInterestImproveClick() {
+            const currentInterests = interestsTextarea.value;
+            if (currentInterests.trim() === '') {
+                showError("Please write something first to improve it.", 3);
+                return;
+            }
+            showError("", 3);
+            improveBtnText.classList.add('hidden');
+            improvingSpinner.classList.remove('hidden');
+            improveInterestBtn.disabled = true;
+
+            try {
+                // FIX: Build the prompt here
+                const prompt = `Rewrite the following user's interest description to be more professional, elaborate, and suitable for a career advisor. Expand on the core ideas, turning simple phrases into a compelling statement of passion and aspiration. Keep the response concise (2-4 sentences) and written in the first person. Do not add any preamble. Original text: "${currentInterests}"`;
+                
+                const improvedText = await callGeminiAPI(prompt, 'interest');
+                if(improvedText) interestsTextarea.value = improvedText;
+            } catch(error) {
+                 console.error("Error improving text with AI:", error);
+                showError('Could not improve text. Please try again.', 3);
+            } finally {
+                improveBtnText.classList.remove('hidden');
+                improvingSpinner.classList.add('hidden');
+                improveInterestBtn.disabled = false;
+            }
+        }
+        
+        async function handleDynamicImproveClick(event) {
+            const button = event.target.closest('.improve-ai-btn');
+            if (!button) return;
+
+            const targetId = button.dataset.targetId;
+            const context = button.dataset.context; // 'experience' or 'project'
+            const textarea = document.getElementById(targetId);
+
+            if (!textarea || textarea.value.trim() === '') return;
+
+            const btnText = button.querySelector('.btn-text');
+            const spinner = button.querySelector('.spinner');
+
+            btnText.classList.add('hidden');
+            spinner.classList.remove('hidden');
+            button.disabled = true;
+
+            try {
+                // FIX: Build the prompt here
+                let prompt = '';
+                if (context === 'experience') {
+                    prompt = `Rewrite the following user's work experience description to be more professional and achievement-oriented. Use action verbs and quantify results where possible. Format the output as a few concise bullet points or a short paragraph. Do not add any preamble. Original text: "${textarea.value}"`;
+                } else if (context === 'project') {
+                    prompt = `Rewrite the following user's project description to be more professional, highlighting the problem solved, the key technologies used, and the user's specific contributions. Do not add any preamble. Original text: "${textarea.value}"`;
+                }
+                
+                const improvedText = await callGeminiAPI(prompt, context);
+                if(improvedText) textarea.value = improvedText;
+            } catch(error) {
+                 console.error(`Error improving ${context}:`, error);
+                 // Optionally show a small error message near the button
+            } finally {
+                btnText.classList.remove('hidden');
+                spinner.classList.add('hidden');
+                button.disabled = false;
+            }
+        }
+        
+        /**
+         * Securely calls the deployed Google Cloud Function proxy.
+         * This function no longer calls the Gemini API directly.
+         */
+        async function callGeminiAPI(text, context, additionalData = {}, retries = 3, delay = 1000) {
+            const apiUrl = PROXY_URL; // All calls now go to our secure proxy
+            
+            // --- FIX: This function now constructs the FULL prompt ---
+            // This is necessary because our simple proxy doesn't have this logic.
+            // The 'text' parameter will now be the *final prompt* for text/json tasks.
+            
+            let finalPrompt = text;
+            let finalContext = context;
+            let finalAdditionalData = additionalData;
+            let payload;
+
+            // --- Build Prompt & Payload ---
+            if (context === 'tts') {
+                finalContext = 'tts';
+                payload = {
+                    context: finalContext,
+                    text: `Say with a professional and friendly tone: ${text}`,
+                    additionalData: additionalData // Pass through TTS config if any
+                };
+            } else {
+                // All other tasks (text/json)
+                // The prompt is now built *before* calling this function
+                // (See handleGenerateSummary, handleInterestImproveClick, etc.)
+                // The 'text' param IS the final prompt.
+                
+                if (context === 'chat') {
+                    // Chat is special, it sends history
+                    payload = {
+                        context: 'chat',
+                        text: null, // Chat doesn't use a single text prompt
+                        additionalData: {
+                            chatHistory: additionalData.chatHistory,
+                            careerContext: careerRecommendations.length > 0 ? `My recommended careers are ${careerRecommendations[0].title} and ${careerRecommendations[1].title}.` : "I haven't received career recommendations yet."
+                        }
+                    };
+                } else {
+                    // For all other cases, 'text' is the prompt
+                    payload = {
+                        context: context,
+                        text: finalPrompt,
+                        additionalData: additionalData
+                    };
+                }
+            }
+            
+            console.log(`Calling secure proxy for context: ${context}`);
+            
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload) // Send the payload
+                });
+
+                if (!response.ok) {
+                    let errorBody;
+                    try {
+                        errorBody = await response.json();
+                    } catch (e) {
+                        errorBody = { message: "Unknown proxy error" };
+                    }
+                    throw new Error(`Proxy call failed for context ${context}: ${response.status}. ${errorBody.message || 'No additional error message.'}`);
+                }
+
+                const result = await response.json(); // This is our { success: true, response: ... } object
+
+                if (result.success === false) {
+                    throw new Error(`Proxy reported an error: ${result.message}`);
+                }
+
+                // --- SUCCESS ---
+                let responseText = result.response; // The AI-generated text from our backend
+
+                // --- Frontend Cleaning Logic ---
+                if (context === 'recommendations' || context === 'interview_questions') {
+                    responseText = responseText.replace(/[\n\r\t\u0000-\u001F\u007F-\u009F]/g, '');
+                    responseText = responseText.replace(/,\s*([}\]])/g, '$1');
+                    let match = responseText.match(/\{.*\}/s);
+                    if (match) {
+                        responseText = match[0];
+                    } else {
+                        console.error("Failed to find valid JSON in response:", result.response);
+                        throw new Error("Cleaned JSON is invalid or missing.");
+                    }
+                }
+
+                if (context === 'tts') {
+                    // TTS returns Base64 audio data
+                    return { audioData: responseText, mimeType: 'audio/L16;rate=24000' };
+                }
+
+                return responseText.trim();
+
+            } catch (error) {
+                console.error(`Error in callGeminiAPI for context ${context}:`, error);
+                
+                if (retries > 0 && (error.message.includes('429') || error.message.includes('503'))) {
+                    console.log(`Retrying... (${retries} attempts left)`);
+                    await new Promise(res => setTimeout(res, delay));
+                    return callGeminiAPI(text, context, additionalData, retries - 1, delay * 2);
+                } else {
+                    console.error(`Final attempt failed for context ${context}.`);
+                    throw error;
+                }
+            }
+        }
+
+        async function getAIRecommendations() {
+            if (interestsTextarea.value.trim() === '') {
+                showError("Please describe your interests and aspirations.", 3);
+                return;
+            }
+            showError("", 3);
+            
+            btnText.classList.add('hidden');
+            loadingSpinner.classList.remove('hidden');
+            getAdviceBtn.disabled = true;
+
+            try {
+                // FIX: Build the prompt here
+                const userNameRec = document.getElementById('name').value;
+                const educationRec = document.getElementById('education').value;
+                const fieldOfStudyRec = document.getElementById('field-of-study').value;
+                const interestsRec = interestsTextarea.value;
+                const prompt = `Act as an expert career advisor. I am ${userNameRec}, my education is ${educationRec} in ${fieldOfStudyRec}. My skills are: ${userSkills.join(', ')}. My interests are: "${interestsRec}". Based *only* on this information, recommend the top 2 career paths for me. For each path, provide: "title" (string), "description" (string, 1-2 sentences), "avgSalary" (string, e.g., "$120,000 USD"), "outlook" (string, e.g., "15% Growth (Very High)"), "requiredSkills" (array of 5-7 key skills as strings). Return this as a single, valid JSON object with a key "careers" which is an array of the 2 career path objects. Do not include any other text, markdown formatting, or preamble. Example: {"careers": [{"title": "Software Engineer", ...}, {"title": "Data Scientist", ...}]}`;
+
+                const responseText = await callGeminiAPI(prompt, 'recommendations');
+                
+                const data = JSON.parse(responseText);
+                
+                // *** FIX: Make check more robust ***
+                if (data.careers && data.careers.length > 0) {
+                    careerRecommendations = data.careers;
+                    
+                    const topMatch = data.careers[0];
+                    // Create a fallback second match if only one is returned
+                    const secondMatch = data.careers.length >= 2 
+                        ? data.careers[1] 
+                        : { 
+                            title: "Explore Other Fields", 
+                            description: "The AI found one strong match for you. Continue to explore other areas to broaden your options!", 
+                            avgSalary: "N/A", 
+                            outlook: "N/A", 
+                            requiredSkills: [] 
+                          };
+
+                    displayResults(document.getElementById('name').value, topMatch, secondMatch);
+                    changeStep(4);
+                    showLiveJobs();
+                    networkingAssistantContainer.classList.remove('hidden');
+                } else {
+                    // This error is now more accurate
+                    throw new Error("AI response did not contain any valid career paths.");
+                }
+            } catch (error) {
+                console.error("Error getting AI recommendations:", error);
+                showError('Could not get AI advice. Please try again. ' + error.message, 3);
+            } finally {
+                btnText.classList.remove('hidden');
+                loadingSpinner.classList.add('hidden');
+                getAdviceBtn.disabled = false;
+            }
+        }
+        
+        function displayResults(userName, topMatch, secondMatch) {
+            const topMatchSkillGap = topMatch.requiredSkills.filter(skill => !userSkills.map(s => s.toLowerCase()).includes(skill.toLowerCase()));
+            const topMatchKnownSkills = topMatch.requiredSkills.filter(skill => userSkills.map(s => s.toLowerCase()).includes(skill.toLowerCase()));
+            const secondMatchSkillGap = secondMatch.requiredSkills.filter(skill => !userSkills.map(s => s.toLowerCase()).includes(skill.toLowerCase()));
+            const secondMatchKnownSkills = secondMatch.requiredSkills.filter(skill => userSkills.map(s => s.toLowerCase()).includes(skill.toLowerCase()));
+            
+            resultsContent.innerHTML = `
+                <h2 class="text-2xl md:text-3xl font-bold text-slate-900 mb-2">Your Personalized Career Advice, ${userName}!</h2>
+                <p class="text-slate-600 mb-6">Based on your skills and interests, here are our top recommendations for you.</p>
+
+                <!-- Top Recommendation Card -->
+                <div class="border-2 border-blue-500 rounded-xl p-6 mb-8 bg-blue-50/50">
+                    <h3 class="text-xl font-bold text-blue-800">${topMatch.title}</h3>
+                    <p class="text-slate-700 mt-1 mb-4">${topMatch.description}</p>
+                    <div class="flex flex-wrap gap-4 text-sm">
+                        <div class="flex items-center"><i class="fas fa-dollar-sign text-green-500 mr-2"></i>Avg. Salary: <span class="font-semibold ml-1">${topMatch.avgSalary}</span></div>
+                        <div class="flex items-center"><i class="fas fa-chart-line text-purple-500 mr-2"></i>Job Outlook: <span class="font-semibold ml-1">${topMatch.outlook}</span></div>
+                    </div>
+                </div>
+                
+                <!-- Growth Chart -->
+                <div class="mb-8">
+                     <h3 class="text-xl font-semibold mb-4 text-slate-800">Projected 15-Year Growth for a ${topMatch.title}</h3>
+                     <div class="border border-slate-200 rounded-lg p-4" style="height: 250px;">
+                        <canvas id="growthChart"></canvas>
+                     </div>
+                </div>
+
+                <!-- Roadmap Section -->
+                <div class="mb-8">
+                    <h3 class="text-xl font-semibold mb-4 text-slate-800">Your Roadmap to Become a ${topMatch.title}</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Skills Analysis -->
+                        <div class="border border-slate-200 rounded-lg p-4">
+                            <h4 class="font-semibold mb-3"><i class="fas fa-check-circle text-green-500 mr-2"></i>Skills You Have</h4>
+                            <div class="flex flex-wrap gap-2">
+                                ${topMatchKnownSkills.length > 0 ? topMatchKnownSkills.map(s => `<span class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">${s}</span>`).join('') : '<p class="text-slate-500 text-sm">No matching skills yet. Let\'s build them!</p>'}
+                            </div>
+                            <h4 class="font-semibold mt-4 mb-3"><i class="fas fa-lightbulb text-yellow-500 mr-2"></i>Skills to Develop (Your Gap)</h4>
+                            <div class="space-y-2"> <!-- Changed from flex-wrap to space-y-2 -->
+                                ${topMatchSkillGap.length > 0 ? topMatchSkillGap.map((s, index) => `
+                                    <div class="p-2 bg-yellow-50 rounded-md border border-yellow-200">
+                                        <div class="flex justify-between items-center">
+                                            <span class="bg-yellow-100 text-yellow-800 text-xs font-medium px-2.5 py-0.5 rounded-full">${s}</span>
+                                            <button class="generate-plan-btn text-xs bg-indigo-100 text-indigo-700 font-semibold px-2 py-1 rounded-md hover:bg-indigo-200 transition flex items-center" data-skill="${s}" data-target-id="plan-container-${index}">
+                                                <span class="btn-text"><i class="fas fa-tasks mr-1"></i>Generate Plan</span>
+                                                <span class="spinner hidden"><i class="fas fa-spinner fa-spin"></i></span>
+                                            </button>
+                                        </div>
+                                        <div id="plan-container-${index}" class="hidden mt-2 text-sm text-slate-700"></div>
+                                    </div>
+                                `).join('') : '<p class="text-slate-500 text-sm">No skill gaps found for this role. Great job!</p>'}
+                            </div>
+                        </div>
+
+                        <!-- Learning Resources -->
+                        <div class="border border-slate-200 rounded-lg p-4">
+                            <h4 class="font-semibold mb-3"><i class="fas fa-book-open text-blue-500 mr-2"></i>Recommended Learning Resources</h4>
+                            <ul class="space-y-2">
+                                ${topMatchSkillGap.slice(0, 4).map(skill => {
+                                    const resource = learningResources[skill.toLowerCase()];
+                                    return resource ? `<li><a href="${resource.url}" target="_blank" class="text-blue-600 hover:underline text-sm">${resource.title} for ${skill}</a></li>` : '';
+                                }).join('')}
+                                ${topMatchSkillGap.length > 4 ? `<li><p class="text-sm text-slate-500">...and more!</p></li>` : ''}
+                                ${topMatchSkillGap.length === 0 ? `<li><p class="text-sm text-slate-500">You've got all the core skills!</p></li>` : ''}
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                 <!-- Second Recommendation -->
+                <div class="mb-8">
+                    <h3 class="text-xl font-semibold mb-4 text-slate-800">Another Great Option: ${secondMatch.title}</h3>
+                     <div class="border border-slate-300 rounded-xl p-6 bg-slate-50">
+                        <p class="text-slate-700 mt-1 mb-4">${secondMatch.description}</p>
+                        <div class="flex flex-wrap gap-4 text-sm mb-4">
+                            <div class="flex items-center"><i class="fas fa-dollar-sign text-green-500 mr-2"></i>Avg. Salary: <span class="font-semibold ml-1">${secondMatch.avgSalary}</span></div>
+                            <div class="flex items-center"><i class="fas fa-chart-line text-purple-500 mr-2"></i>Job Outlook: <span class="font-semibold ml-1">${secondMatch.outlook}</span></div>
+                        </div>
+                         <div class="border-t border-slate-300 pt-4">
+                            <h4 class="font-semibold mb-3">Your Skill Match</h4>
+                             <div class="flex flex-wrap gap-2">
+                                ${secondMatchKnownSkills.length > 0 ? secondMatchKnownSkills.map(s => `<span class="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">${s}</span>`).join('') : '<p class="text-slate-500 text-sm">No matching skills for this role.</p>'}
+                            </div>
+                            <h4 class="font-semibold mt-4 mb-3">Skills to Develop</h4>
+                             <div class="flex flex-wrap gap-2">
+                                ${secondMatchSkillGap.map(s => `<span class="bg-yellow-100 text-yellow-800 text-xs font-medium px-2.5 py-0.5 rounded-full">${s}</span>`).join('')}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            if (buildResumeCheckbox.checked) {
+                downloadResumeBtn.classList.remove('hidden');
+            }
+            
+            renderGrowthChart(topMatch);
+            window.scrollTo(0, 0); // Scroll to top to see results
+        }
+        
+         function showLiveJobs() {
+            if (careerRecommendations.length === 0) return;
+            jobOpportunitiesContainer.classList.remove('hidden');
+
+            const topCareerTitle = careerRecommendations[0].title;
+            const secondCareerTitle = careerRecommendations[1].title;
+
+            // Mock job data for simulation
+            const mockJobs = [
+                { title: topCareerTitle, company: 'Innovatech Solutions', location: 'Remote', description: 'Seeking a proactive developer to build scalable backend services. Experience with cloud platforms is a plus.' },
+                { title: topCareerTitle, company: 'Data Dynamics', location: 'New York, NY', description: 'Join our data engineering team to design and implement robust data pipelines and ETL processes.' },
+                { title: secondCareerTitle, company: 'Creative Minds Inc.', location: 'San Francisco, CA', description: 'We are looking for a skilled professional to analyze business processes and create data-driven solutions.' }
+            ];
+
+            let jobsHTML = `<h3 class="text-2xl font-bold text-slate-900 mb-4">Live Job Opportunities (Simulation)</h3>`;
+            mockJobs.forEach((job, index) => {
+                jobsHTML += `
+                    <div class="border border-slate-200 rounded-lg p-4 mb-3">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h4 class="font-bold text-lg text-slate-800">${job.title}</h4>
+                                <p class="text-sm text-slate-600">${job.company} - ${job.location}</p>
+                                <p class="text-sm text-slate-500 mt-2">${job.description}</p>
+                            </div>
+                            <button class="generate-cover-letter-btn text-sm bg-green-100 text-green-800 font-semibold px-3 py-1 rounded-md hover:bg-green-200 transition flex-shrink-0" data-job-index="${index}">
+                                <span class="btn-text"><i class="fas fa-file-alt mr-2"></i>Generate Cover Letter</span>
+                                <span class="spinner hidden"><i class="fas fa-spinner fa-spin"></i></span>
+                            </button>
+                        </div>
+                        <div id="cover-letter-container-${index}" class="hidden mt-3 p-3 bg-slate-50 rounded-md border border-slate-200">
+                             <textarea class="w-full h-48 text-sm border-slate-300 rounded-md"></textarea>
+                             <button class="copy-cover-letter-btn text-xs bg-slate-200 px-2 py-1 rounded-md mt-1">Copy</button>
+                        </div>
+                    </div>
+                `;
+            });
+            jobOpportunitiesContainer.innerHTML = jobsHTML;
+        }
+
+        async function handleJobOpportunitiesClick(event) {
+            const generateBtn = event.target.closest('.generate-cover-letter-btn');
+            const copyBtn = event.target.closest('.copy-cover-letter-btn');
+
+            if (generateBtn) {
+                const jobIndex = generateBtn.dataset.jobIndex;
+                const container = document.getElementById(`cover-letter-container-${jobIndex}`);
+                const textarea = container.querySelector('textarea');
+                
+                const btnText = generateBtn.querySelector('.btn-text');
+                const spinner = generateBtn.querySelector('.spinner');
+                
+                btnText.classList.add('hidden');
+                spinner.classList.remove('hidden');
+                generateBtn.disabled = true;
+
+                try {
+                    // Mock job data for simulation
+                    const topCareerTitle = careerRecommendations[0].title;
+                    const secondCareerTitle = careerRecommendations[1].title;
+                    const mockJobs = [
+                        { title: topCareerTitle, company: 'Innovatech Solutions', location: 'Remote', description: 'Seeking a proactive developer to build scalable backend services. Experience with cloud platforms is a plus.' },
+                        { title: topCareerTitle, company: 'Data Dynamics', location: 'New York, NY', description: 'Join our data engineering team to design and implement robust data pipelines and ETL processes.' },
+                        { title: secondCareerTitle, company: 'Creative Minds Inc.', location: 'San Francisco, CA', description: 'We are looking for a skilled professional to analyze business processes and create data-driven solutions.' }
+                    ];
+                    const job = mockJobs[jobIndex];
+                    
+                    // FIX: Build the prompt here
+                    const userNameCL = document.getElementById('name').value;
+                    const summaryCL = aiSummaryText.textContent || document.getElementById('interests').value;
+                    const prompt = `You are a professional career coach. Write a compelling cover letter for ${userNameCL} applying for the position of ${job.title} at ${job.company}. User summary: "${summaryCL}". User skills: ${userSkills.join(', ')}. Job description mentions: "${job.description}". The cover letter should be professional, concise (3 paragraphs), highlight skill match, address "Hiring Team", and have no contact placeholders.`;
+
+                    const coverLetter = await callGeminiAPI(prompt, 'cover_letter');
+                    textarea.value = coverLetter;
+                    container.classList.remove('hidden');
+                } catch (error) {
+                    console.error('Failed to generate cover letter:', error);
+                    textarea.value = "Sorry, couldn't generate the cover letter. Please try again.";
+                    container.classList.remove('hidden');
+                } finally {
+                    btnText.classList.remove('hidden');
+                    spinner.classList.add('hidden');
+                    generateBtn.disabled = false;
+                }
+            }
+
+            if (copyBtn) {
+                const container = copyBtn.closest('[id^="cover-letter-container-"]');
+                const textarea = container.querySelector('textarea');
+                textarea.select();
+                try {
+                    document.execCommand('copy');
+                } catch (e) {
+                    navigator.clipboard.writeText(textarea.value);
+                }
+                copyBtn.textContent = 'Copied!';
+                setTimeout(() => { copyBtn.textContent = 'Copy'; }, 2000);
+            }
+        }
+        
+        async function handleLearningPlanClick(event) {
+            const button = event.target.closest('.generate-plan-btn');
+            if (!button) return;
+
+            const skill = button.dataset.skill;
+            const targetId = button.dataset.targetId;
+            const container = document.getElementById(targetId);
+            
+            if (!skill || !container) return;
+
+            const btnText = button.querySelector('.btn-text');
+            const spinner = button.querySelector('.spinner');
+
+            if (container.classList.contains('hidden')) {
+                btnText.classList.add('hidden');
+                spinner.classList.remove('hidden');
+                button.disabled = true;
+
+                try {
+                    // FIX: Build the prompt here
+                    const careerTitlePlan = careerRecommendations.length > 0 ? careerRecommendations[0].title : "their target career";
+                    const prompt = `You are a career coach. Create a simple, 3-step actionable micro-plan for a beginner to learn the skill "${skill}". The user's goal is to become a "${careerTitlePlan}". Make the steps very concrete (e.g., "1. Watch...", "2. Build...", "3. Add..."). Return only the 3-step numbered list. Do not include any preamble or markdown.`;
+
+                    const plan = await callGeminiAPI(prompt, 'learning_plan');
+                    container.innerHTML = `<div class="p-3 bg-indigo-50/50 rounded-md border border-indigo-100 mt-2">${plan.replace(/\n/g, '<br>')}</div>`; // Add replace for newlines
+                    container.classList.remove('hidden');
+                    btnText.innerHTML = '<i class="fas fa-eye-slash mr-1"></i>Hide Plan';
+                } catch (error) {
+                    console.error('Failed to generate learning plan:', error);
+                    container.innerHTML = `<p class="text-red-500 text-xs p-2">Sorry, couldn't generate the plan. Please try again.</p>`;
+                    container.classList.remove('hidden');
+                } finally {
+                    btnText.classList.remove('hidden');
+                    spinner.classList.add('hidden');
+                    button.disabled = false;
+                }
+            } else {
+                container.classList.add('hidden');
+                container.innerHTML = '';
+                btnText.innerHTML = '<i class="fas fa-tasks mr-1"></i>Generate Plan';
+            }
+        }
+        
+        async function handleGenerateNetworkingPlan() {
+            if (careerRecommendations.length === 0) {
+                 showError("Please get career recommendations first.", 4);
+                 return;
+            }
+
+            const btnText = generateNetworkingBtn.querySelector('.btn-text');
+            const spinner = generateNetworkingBtn.querySelector('.spinner');
+
+            btnText.classList.add('hidden');
+            spinner.classList.remove('hidden');
+            generateNetworkingBtn.disabled = true;
+            networkingPlanContent.classList.add('hidden');
+
+            try {
+                // FIX: Build the prompt here
+                const careerTitle = careerRecommendations[0].title;
+                const userNameNet = document.getElementById('name').value || 'a student';
+                const userSkillsNet = userSkills.join(', ') || 'relevant skills';
+                const prompt = `Act as a career networking coach for ${userNameNet}, whose target role is ${careerTitle} and has skills in ${userSkillsNet}. Generate a networking plan with two sections:
+                1.  **"Who to Connect With:"** Provide a bulleted list of 3-4 specific *types* of professionals on LinkedIn relevant to the target role (e.g., "Hiring Managers at [Industry] startups", "Senior [Role Name] at established companies").
+                2.  **"Outreach Message Templates:"** Provide 2 distinct, professional, concise, and personalized LinkedIn connection request message templates (under 300 characters each) that the user can adapt. Include placeholders like "[Name]" and "[Their Company/Work]".
+                
+                Return the response formatted cleanly using markdown headings (e.g., "**Who to Connect With:**") and bullet points/numbered lists. Do not include any preamble.`;
+
+                const planText = await callGeminiAPI(prompt, 'networking_plan');
+
+                let formattedPlan = planText
+                    .replace(/\*\*(.*?)\*\*/g, '<h4 class="font-bold text-slate-800 mt-4 mb-2">$1</h4>')
+                    .replace(/^- (.*?)$/gm, '<li class="ml-4 list-disc">$1</li>')
+                    .replace(/^\d+\. (.*?)$/gm, '<li class="ml-4 list-decimal">$1</li>');
+
+                 let templateCounter = 0;
+                 formattedPlan = formattedPlan.replace(/<li class="ml-4 list-decimal">(.*?)<\/li>/g, (match, p1) => {
+                     templateCounter++;
+                     const tempDiv = document.createElement('div');
+                     tempDiv.innerHTML = p1;
+                     const templateText = tempDiv.textContent || tempDiv.innerText || "";
+                     
+                     return `<li class="ml-4 list-decimal mb-2 relative pr-16">${p1}
+                                <button class="copy-networking-template absolute top-0 right-0 text-xs bg-slate-200 px-2 py-1 rounded-md hover:bg-slate-300" data-template="${escape(templateText)}">
+                                    <i class="fas fa-copy mr-1"></i>Copy
+                                </button>
+                             </li>`;
+                 });
+
+                networkingPlanContent.innerHTML = formattedPlan;
+                networkingPlanContent.classList.remove('hidden');
+
+            } catch (error) {
+                console.error("Error generating networking plan:", error);
+                networkingPlanContent.innerHTML = `<p class="text-red-500">Sorry, couldn't generate the networking plan: ${error.message}</p>`;
+                networkingPlanContent.classList.remove('hidden');
+            } finally {
+                btnText.classList.remove('hidden');
+                spinner.classList.add('hidden');
+                generateNetworkingBtn.disabled = false;
+            }
+        }
+        
+        async function handleNetworkingCopyClick(event) {
+             const copyBtn = event.target.closest('.copy-networking-template');
+             if (copyBtn) {
+                 const templateText = unescape(copyBtn.dataset.template);
+                 try {
+                     await navigator.clipboard.writeText(templateText);
+                     copyBtn.innerHTML = '<i class="fas fa-check mr-1"></i>Copied!';
+                 } catch (err) {
+                     console.error('Failed to copy template: ', err);
+                     try {
+                        const tempTextArea = document.createElement('textarea');
+                        tempTextArea.value = templateText;
+                        document.body.appendChild(tempTextArea);
+                        tempTextArea.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(tempTextArea);
+                        copyBtn.innerHTML = '<i class="fas fa-check mr-1"></i>Copied!';
+                     } catch (execErr) {
+                         console.error('Fallback copy failed: ', execErr);
+                         copyBtn.textContent = 'Error';
+                     }
+                 }
+                 setTimeout(() => { copyBtn.innerHTML = '<i class="fas fa-copy mr-1"></i>Copy'; }, 2000);
+             }
+        }
+
+        function renderGrowthChart(career) {
+            const ctx = document.getElementById('growthChart');
+            if (!ctx) return;
+            
+            let baseGrowth = 0.02;
+            let outlookText = (career.outlook || "").toLowerCase();
+            
+            if (outlookText.includes("very high") || outlookText.includes("20%") || outlookText.includes("25%")) {
+                baseGrowth = 0.05;
+            } else if (outlookText.includes("high") || outlookText.includes("15%")) {
+                baseGrowth = 0.035;
+            } else if (outlookText.includes("average") || outlookText.includes("10%") || outlookText.includes("8%")) {
+                baseGrowth = 0.02;
+            } else if (outlookText.includes("low") || outlookText.includes("slow") || outlookText.includes("3%") || outlookText.includes("5%")) {
+                baseGrowth = 0.005;
+            } else if (outlookText.includes("decline") || outlookText.includes("negative")) {
+                baseGrowth = -0.01;
+            } else {
+                 const percMatch = outlookText.match(/(\d+)%/);
+                 if (percMatch && percMatch[1]) {
+                     baseGrowth = parseFloat(percMatch[1]) / 100;
+                 }
+            }
+
+            const currentYear = new Date().getFullYear();
+            const years = Array.from({length: 15}, (_, i) => currentYear - 7 + i);
+            
+            let growthData = [];
+            let currentJobs = 50;
+            
+            for(let i = 0; i < 15; i++) {
+                let fluctuation;
+                if (i < 7) {
+                    fluctuation = (Math.random() - 0.45) * 8;
+                } else {
+                    fluctuation = (Math.random() - 0.4) * 5;
+                }
+                
+                const growthFactor = 1 + (baseGrowth + (Math.random() - 0.5) * 0.01);
+                currentJobs = currentJobs * growthFactor + fluctuation;
+                growthData.push(Math.max(currentJobs, 5));
+            }
+
+            new Chart(ctx.getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: years,
+                    datasets: [{
+                        label: `Relative Job Market Growth`,
+                        data: growthData,
+                        borderColor: baseGrowth >= 0.02 ? '#16a34a' : (baseGrowth >= 0 ? '#f59e0b' : '#dc2626'),
+                        backgroundColor: baseGrowth >= 0.02 ? 'rgba(22, 163, 74, 0.1)' : (baseGrowth >= 0 ? 'rgba(245, 158, 11, 0.1)' : 'rgba(220, 38, 38, 0.1)'),
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: false,
+                            title: {
+                                display: true,
+                                text: 'Relative Number of Jobs'
+                            }
+                        },
+                        x: {
+                             title: {
+                                display: true,
+                                text: 'Year'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return ` ${context.dataset.label}: ${context.formattedValue}`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        function downloadResume() {
+            try {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF({
+                    orientation: 'p',
+                    unit: 'mm',
+                    format: 'a4'
+                });
+
+                const name = document.getElementById('name').value;
+                const email = document.getElementById('email').value;
+                const phone = document.getElementById('phone').value;
+                const linkedin = document.getElementById('linkedin').value;
+                const education = document.getElementById('education').value;
+                const fieldOfStudy = document.getElementById('field-of-study').value;
+                let summary = aiSummaryText.textContent || document.getElementById('interests').value;
+
+                const margin = 20;
+                let yPos = margin;
+
+                // --- Header ---
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(22);
+                doc.text(name.toUpperCase(), margin, yPos);
+                yPos += 10;
+                
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(10);
+                doc.text(`${email} | ${phone} | ${linkedin}`, margin, yPos);
+                yPos += 10;
+                doc.line(margin, yPos - 5, 190, yPos - 5);
+
+                // --- Summary ---
+                yPos += 5;
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(12);
+                doc.text("SUMMARY", margin, yPos);
+                yPos += 6;
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(10);
+                const summaryLines = doc.splitTextToSize(summary, 170);
+                doc.text(summaryLines, margin, yPos);
+                yPos += (summaryLines.length * 4) + 5;
+
+                // --- Skills ---
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(12);
+                doc.text("SKILLS", margin, yPos);
+                yPos += 6;
+                doc.setFont("helvetica", "normal");
+                doc.setFontSize(10);
+                const skillsText = userSkills.join(', ');
+                const skillsLines = doc.splitTextToSize(skillsText, 170);
+                doc.text(skillsLines, margin, yPos);
+                yPos += (skillsLines.length * 4) + 5;
+
+                // --- Experience ---
+                if (experienceCount > 0) {
+                    doc.setFont("helvetica", "bold");
+                    doc.setFontSize(12);
+                    doc.text("EXPERIENCE", margin, yPos);
+                    yPos += 6;
+                    for (let i = 1; i <= experienceCount; i++) {
+                        const title = document.getElementById(`exp-title-${i}`).value;
+                        const company = document.getElementById(`exp-company-${i}`).value;
+                        const start = document.getElementById(`exp-start-${i}`).value;
+                        const end = document.getElementById(`exp-end-${i}`).value;
+                        const desc = document.getElementById(`exp-desc-${i}`).value;
+                        
+                        doc.setFont("helvetica", "bold");
+                        doc.setFontSize(10);
+                        doc.text(`${title.toUpperCase()} | ${company}`, margin, yPos);
+                        
+                        doc.setFont("helvetica", "italic");
+                        doc.text(`${start} - ${end}`, 190, yPos, { align: 'right' });
+                        yPos += 5;
+
+                        doc.setFont("helvetica", "normal");
+                        const descLines = doc.splitTextToSize(desc.replace(/•/g, '-'), 165);
+                        doc.text(descLines, margin + 5, yPos);
+                        yPos += (descLines.length * 4) + 4;
+                    }
+                }
+                
+                // --- Projects ---
+                 if (projectCount > 0) {
+                    doc.setFont("helvetica", "bold");
+                    doc.setFontSize(12);
+                    doc.text("PROJECTS", margin, yPos);
+                    yPos += 6;
+                     for (let i = 1; i <= projectCount; i++) {
+                        const name = document.getElementById(`proj-name-${i}`).value;
+                        const desc = document.getElementById(`proj-desc-${i}`).value;
+                        const tech = document.getElementById(`proj-tech-${i}`).value;
+                        
+                        doc.setFont("helvetica", "bold");
+                        doc.setFontSize(10);
+                        doc.text(name.toUpperCase(), margin, yPos);
+                        yPos += 5;
+
+                        doc.setFont("helvetica", "normal");
+                        const descLines = doc.splitTextToSize(desc.replace(/•/g, '-'), 165);
+                        doc.text(descLines, margin + 5, yPos);
+                        yPos += (descLines.length * 4) + 2;
+
+                        doc.setFont("helvetica", "italic");
+                        doc.text(`Technologies: ${tech}`, margin + 5, yPos);
+                        yPos += 6;
+                    }
+                }
+
+                // --- Education ---
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(12);
+                doc.text("EDUCATION", margin, yPos);
+                yPos += 6;
+                doc.setFont("helvetica", "bold");
+                doc.setFontSize(10);
+                doc.text(education, margin, yPos);
+                yPos += 5;
+                doc.setFont("helvetica", "normal");
+                doc.text(fieldOfStudy, margin, yPos);
+
+                // --- Save PDF ---
+                doc.save(`${name.replace(/\s+/g, '_')}_Resume.pdf`);
+            } catch (e) {
+                console.error("Error generating PDF:", e);
+                alert("Error generating PDF. Please ensure all fields are filled correctly.");
+            }
+        }
+        
+        // --- AI Mentor Chat Functions ---
+        
+        async function handleChatMessage() {
+            const userInput = chatInput.value.trim();
+            if (userInput === '') return;
+
+            addMessageToChat('user', userInput);
+            chatInput.value = '';
+            chatTypingIndicator.classList.remove('hidden');
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            chatHistory.push({ role: 'user', parts: [{ text: userInput }] });
+            if (chatHistory.length > 6) {
+                chatHistory = chatHistory.slice(-6);
+            }
+
+            try {
+                // FIX: Pass chat history in additionalData
+                const aiResponse = await callGeminiAPI(null, 'chat', { chatHistory: chatHistory });
+                addMessageToChat('ai', aiResponse);
+                chatHistory.push({ role: 'model', parts: [{ text: aiResponse }] });
+            } catch (error) {
+                console.error("Error in chat:", error);
+                addMessageToChat('ai', "Sorry, I'm having trouble connecting. Please try again.");
+            } finally {
+                chatTypingIndicator.classList.add('hidden');
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+        }
+
+        function addMessageToChat(role, text) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `chat-message ${role}-message`;
+            messageDiv.textContent = text;
+            chatMessages.insertBefore(messageDiv, chatTypingIndicator);
+        }
+
+        // --- Mock Interview Functions ---
+       
+         function showInterviewPrep() {
+            const interviewPrepContainer = document.getElementById('interview-prep-container');
+            if (careerRecommendations.length === 0) {
+                 alert("Please get your career recommendations first!");
+                 return;
+            }
+            interviewPrepContainer.classList.remove('hidden');
+            interviewPrepContainer.innerHTML = `
+                <h3 class="text-2xl font-bold text-slate-900 mb-4">Live Virtual Interview</h3>
+                <p class="text-slate-600 mb-4">Prepare for your interview with a live, voice-interactive AI session. You'll be asked questions out loud and get instant feedback on your answers.</p>
+                <div class="mb-4">
+                    <label for="career-select" class="block text-sm font-medium text-slate-700 mb-1">Select a career to prepare for:</label>
+                    <select id="career-select" class="w-full md:w-1/2 px-4 py-2 border border-slate-300 rounded-lg">
+                        <option value="0">${careerRecommendations[0].title}</option>
+                        ${careerRecommendations.length >= 2 ? `<option value="1">${careerRecommendations[1].title}</option>` : ''}
+                    </select>
+                </div>
+                <button id="start-interview-btn" class="bg-indigo-600 text-white font-semibold px-6 py-2 rounded-lg hover:bg-indigo-700 transition">Start Interview</button>
+                <div id="live-interview-room" class="hidden mt-4"></div>
+            `;
+            const startInterviewBtn = document.getElementById('start-interview-btn');
+            const careerSelect = document.getElementById('career-select');
+            startInterviewBtn.addEventListener('click', () => {
+                startInterview(careerSelect.value);
+            });
+        }
+
+        async function startInterview(careerIndex) {
+            const interviewRoom = document.getElementById('live-interview-room');
+            const startButton = document.getElementById('start-interview-btn');
+            startButton.textContent = 'Loading...';
+            startButton.disabled = true;
+
+            const careerTitle = careerRecommendations[careerIndex].title;
+            
+            try {
+                // FIX: Build the prompt here
+                const prompt = `Generate 3 behavioral and 2 technical interview questions for a ${careerTitle} role. Return this as a single, valid JSON object with a key "questions" which is an array of strings. Do not include any other text or markdown formatting.`;
+                const responseText = await callGeminiAPI(prompt, 'interview_questions');
+                
+                let data;
+                try {
+                     data = JSON.parse(responseText);
+                } catch (parseError) {
+                    console.error("Failed to parse JSON:", responseText);
+                    throw new Error(`Failed to parse interview questions: ${parseError.message}`);
+                }
+
+                if (!data.questions || data.questions.length === 0) {
+                    throw new Error("AI did not return any questions.");
+                }
+                
+                interviewState.questions = data.questions;
+                interviewState.currentQuestionIndex = 0;
+                interviewState.isInterviewActive = true;
+                
+                document.getElementById('career-select').parentElement.classList.add('hidden');
+                startButton.classList.add('hidden');
+                interviewRoom.classList.remove('hidden');
+
+                interviewRoom.innerHTML = `
+                    <div class="border-t pt-4">
+                        <div class="flex items-center space-x-4 mb-4">
+                            <div class="w-12 h-12 rounded-full bg-indigo-100 flex items-center justify-center">
+                                <i class="fas fa-user-tie text-2xl text-indigo-600"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-lg font-semibold text-slate-800">AI Interviewer</h4>
+                                <p id="interviewer-status" class="text-sm text-slate-500">Asking question...</p>
+                            </div>
+                        </div>
+                        <div id="question-display" class="p-4 bg-slate-100 rounded-lg min-h-[60px] text-slate-800 font-semibold"></div>
+                        <div id="feedback-display" class="mt-3 text-sm text-slate-600"></div>
+                        <div class="mt-4">
+                            <textarea id="answer-transcript" rows="4" class="w-full p-2 border rounded-lg" placeholder="Your transcribed answer will appear here..."></textarea>
+                            <button id="record-btn" class="mt-2 w-full bg-blue-600 text-white font-semibold py-2 rounded-lg hover:bg-blue-700 flex items-center justify-center" disabled>
+                                <i class="fas fa-microphone mr-2"></i>
+                                <span id="record-btn-text">Start Recording</span>
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                askNextQuestion();
+
+                document.getElementById('record-btn').addEventListener('click', toggleRecording);
+
+            } catch (error) {
+                console.error("Error starting interview:", error);
+                interviewRoom.innerHTML = `<p class="text-red-500">Could not start the interview: ${error.message}. Please try again.</p>`;
+                 startButton.textContent = 'Start Interview';
+                 startButton.disabled = false;
+            }
+        }
+        
+        // --- Audio/Speech Functions ---
+        
+        async function speak(text) {
+             const interviewerStatus = document.getElementById('interviewer-status');
+             try {
+                if (interviewerStatus) interviewerStatus.textContent = "Speaking...";
+                // FIX: Pass the text prompt to the TTS context
+                const result = await callGeminiAPI(text, 'tts');
+                
+                if (result && result.audioData) {
+                    const sampleRate = parseInt(result.mimeType.match(/rate=(\d+)/)[1], 10) || 24000;
+                    const pcmData = base64ToArrayBuffer(result.audioData);
+                    const pcm16 = new Int16Array(pcmData);
+                    const wavBlob = pcmToWav(pcm16, sampleRate);
+                    const audioUrl = URL.createObjectURL(wavBlob);
+                    
+                    return new Promise((resolve) => {
+                        ttsAudio.src = audioUrl;
+                        ttsAudio.onended = () => {
+                            if (interviewerStatus) interviewerStatus.textContent = "Waiting for your answer...";
+                            resolve();
+                        };
+                        ttsAudio.play();
+                    });
+                }
+             } catch (error) {
+                 console.error("Error in TTS:", error);
+                 if (interviewerStatus) interviewerStatus.textContent = "Audio error. Waiting for answer...";
+                 if ('speechSynthesis' in window) {
+                     return new Promise((resolve) => {
+                         const utterance = new SpeechSynthesisUtterance(text);
+                         utterance.rate = 0.9;
+                         utterance.onend = () => {
+                             if (interviewerStatus) interviewerStatus.textContent = "Waiting for your answer...";
+                             resolve();
+                         };
+                         window.speechSynthesis.speak(utterance);
+                     });
+                 }
+             }
+        }
+        
+        function base64ToArrayBuffer(base64) {
+            const binaryString = window.atob(base64);
+            const len = binaryString.length;
+            const bytes = new Uint8Array(len);
+            for (let i = 0; i < len; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
+        function pcmToWav(pcmData, sampleRate) {
+            const numChannels = 1;
+            const bitsPerSample = 16;
+            const dataSize = pcmData.length * (bitsPerSample / 8);
+            const blockAlign = numChannels * (bitsPerSample / 8);
+            const byteRate = sampleRate * blockAlign;
+            const buffer = new ArrayBuffer(44 + dataSize);
+            const view = new DataView(buffer);
+
+            writeString(view, 0, 'RIFF');
+            view.setUint32(4, 36 + dataSize, true);
+            writeString(view, 8, 'WAVE');
+            writeString(view, 12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);
+            view.setUint16(22, numChannels, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, byteRate, true);
+            view.setUint16(32, blockAlign, true);
+            view.setUint16(34, bitsPerSample, true);
+            writeString(view, 36, 'data');
+            view.setUint32(40, dataSize, true);
+
+            for (let i = 0; i < pcmData.length; i++) {
+                view.setInt16(44 + i * 2, pcmData[i], true);
+            }
+
+            return new Blob([view], { type: 'audio/wav' });
+        }
+        
+        function writeString(view, offset, string) {
+            for (let i = 0; i < string.length; i++) {
+                view.setUint8(offset + i, string.charCodeAt(i));
+            }
+        }
+        
+        function initializeSpeechRecognition() {
+            window.SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (window.SpeechRecognition) {
+                recognition = new SpeechRecognition();
+                recognition.continuous = true;
+                recognition.interimResults = true;
+                recognition.lang = 'en-US';
+
+                recognition.onresult = (event) => {
+                    let interimTranscript = '';
+                    let finalTranscript = '';
+                    for (let i = event.resultIndex; i < event.results.length; ++i) {
+                        if (event.results[i].isFinal) {
+                            finalTranscript += event.results[i][0].transcript;
+                        } else {
+                            interimTranscript += event.results[i][0].transcript;
+                        }
+                    }
+                    document.getElementById('answer-transcript').value = answerTranscript + finalTranscript + interimTranscript;
+                };
+                
+                recognition.onend = () => {
+                    if (isRecording) {
+                        recognition.start();
+                    }
+                };
+
+                recognition.onerror = (event) => {
+                    console.error("Speech recognition error:", event.error);
+                    stopRecording();
+                };
+                
+            } else {
+                console.error("Speech Recognition not supported in this browser.");
+                const recordBtn = document.getElementById('record-btn');
+                if(recordBtn) recordBtn.disabled = true;
+                if(recordBtn) recordBtn.querySelector('#record-btn-text').textContent = "Voice not supported";
+            }
+        }
+
+        async function askNextQuestion() {
+            const questionDisplay = document.getElementById('question-display');
+            const feedbackDisplay = document.getElementById('feedback-display');
+            const answerInput = document.getElementById('answer-transcript');
+            const recordBtn = document.getElementById('record-btn');
+            const recordBtnText = document.getElementById('record-btn-text');
+            const interviewerStatus = document.getElementById('interviewer-status');
+
+            feedbackDisplay.innerHTML = '';
+            answerInput.value = '';
+            answerTranscript = '';
+            
+            if (interviewState.currentQuestionIndex < interviewState.questions.length) {
+                const question = interviewState.questions[interviewState.currentQuestionIndex];
+                questionDisplay.textContent = question;
+                recordBtn.disabled = true;
+                recordBtnText.textContent = "Listen to question...";
+                
+                await speak(`Question ${interviewState.currentQuestionIndex + 1}. ${question}`);
+                
+                recordBtn.disabled = false;
+                recordBtnText.textContent = "Start Recording";
+                recordBtn.classList.remove('recording', 'processing');
+                interviewerStatus.textContent = "Ready for your answer...";
+            } else {
+                endInterview();
+            }
+        }
+        
+        function toggleRecording() {
+            if (isRecording) {
+                stopRecording();
+            } else {
+                startRecording();
+            }
+        }
+        
+        function startRecording() {
+            if (!recognition) {
+                 initializeSpeechRecognition();
+                 if (!recognition) return;
+            }
+            
+            const recordBtn = document.getElementById('record-btn');
+            const recordBtnText = document.getElementById('record-btn-text');
+            const answerInput = document.getElementById('answer-transcript');
+            const interviewerStatus = document.getElementById('interviewer-status');
+
+            answerTranscript = answerInput.value + ' ';
+            recognition.start();
+            isRecording = true;
+            
+            recordBtn.classList.add('recording');
+            recordBtnText.innerHTML = '<i class="fas fa-stop mr-2"></i>Stop & Submit Answer';
+            interviewerStatus.textContent = "Listening...";
+        }
+
+        function stopRecording() {
+            if (recognition) {
+                recognition.stop();
+            }
+            isRecording = false;
+            
+            const recordBtn = document.getElementById('record-btn');
+            const recordBtnText = document.getElementById('record-btn-text');
+            const interviewerStatus = document.getElementById('interviewer-status');
+            
+            recordBtn.classList.remove('recording');
+            recordBtn.classList.add('processing');
+            recordBtnText.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Processing...';
+            recordBtn.disabled = true;
+            interviewerStatus.textContent = "Analyzing your answer...";
+            
+            setTimeout(handleSubmitAnswer, 500); 
+        }
+
+        async function handleSubmitAnswer() {
+             const answerInput = document.getElementById('answer-transcript');
+             const answer = answerInput.value.trim();
+             if (answer === '') {
+                 askNextQuestion();
+                 return;
+             }
+
+             const feedbackDisplay = document.getElementById('feedback-display');
+             const currentQuestion = interviewState.questions[interviewState.currentQuestionIndex];
+             
+             try {
+                // FIX: Build the prompt here
+                const prompt = `You are an AI interviewer providing feedback. The user was asked: "${currentQuestion}". The user answered: "${answer}". Provide 1-2 sentences of brief, constructive feedback. For behavioral questions, evaluate it based on the STAR method. For technical questions, assess the clarity and correctness of the explanation. Start the feedback directly without preamble.`;
+                
+                const feedback = await callGeminiAPI(prompt, 'interview_feedback');
+                feedbackDisplay.innerHTML = `<p><strong class="font-semibold text-indigo-700">Feedback:</strong> ${feedback}</p>`;
+                
+                await speak(`Feedback: ${feedback}`);
+                
+                interviewState.currentQuestionIndex++;
+                
+                askNextQuestion();
+
+             } catch (error) {
+                 console.error("Error getting feedback:", error);
+                 feedbackDisplay.textContent = "Sorry, I couldn't process that feedback. Let's move to the next question.";
+                 interviewState.currentQuestionIndex++;
+                 setTimeout(askNextQuestion, 2000);
+             }
+        }
+
+        async function endInterview() {
+            const interviewRoom = document.getElementById('live-interview-room');
+            const endMessage = "You've completed the mock interview. Great job! Consistent practice is key to success.";
+            interviewRoom.innerHTML = `
+                <div class="text-center p-8 bg-green-50 border-2 border-green-200 rounded-lg">
+                    <h4 class="text-xl font-bold text-green-800">Interview Complete!</h4>
+                    <p class="text-green-700 mt-2">Great job completing the mock interview. Consistent practice is key to success!</p>
+                </div>
+            `;
+            await speak(endMessage);
+            interviewState.isInterviewActive = false;
+        }
+
+        // --- Init ---
+        function init() {
+            changeStep(1);
+            addExperienceEntry();
+            addProjectEntry();
+            initializeSpeechRecognition();
+        }
+
+        init();
+    })();
+</script>
+</body>
+</html>
+
